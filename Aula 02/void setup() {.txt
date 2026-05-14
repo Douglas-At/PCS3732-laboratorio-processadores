@@ -1,0 +1,43 @@
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+}
+
+// Interpola entre dois valores
+int lerp(int a, int b, float t) {
+  return a + (int)((b - a) * t);
+}
+
+// Paleta de cores que se repetem no ciclo
+const int NUM_COLORS = 6;
+int palette[NUM_COLORS][3] = {
+  {150,   0,   0},  // vermelho
+  {120,  60,   0},  // laranja
+  {  0, 130,   0},  // verde
+  {  0,  80, 120},  // azul
+  { 80,   0, 130},  // roxo
+  {120,   0,  60},  // rosa
+};
+
+void loop() {
+  unsigned long ms = millis();
+  
+  // Ciclo total de 10000ms dividido entre os intervalos da paleta
+  long cycleDuration = 10000L;
+  long t = ms % cycleDuration;
+  
+  // Qual segmento da paleta estamos
+  float progress = (float)t / cycleDuration * NUM_COLORS;
+  int idx = (int)progress % NUM_COLORS;
+  int nextIdx = (idx + 1) % NUM_COLORS;
+  float blend = progress - (int)progress; // 0.0 a 1.0
+
+  // Suaviza a transição com easing (smoothstep)
+  blend = blend * blend * (3.0f - 2.0f * blend);
+
+  int r = lerp(palette[idx][0], palette[nextIdx][0], blend);
+  int g = lerp(palette[idx][1], palette[nextIdx][1], blend);
+  int b = lerp(palette[idx][2], palette[nextIdx][2], blend);
+
+  neopixelWrite(LED_BUILTIN, r, g, b);
+  delay(16); // ~60fps
+}
