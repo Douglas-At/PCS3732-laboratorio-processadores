@@ -18,8 +18,8 @@
 // -----------------------------------------
 // Pinos
 // -----------------------------------------
-const int LDR_PIN  = 34;   // ADC1_CH6 (somente-entrada)
-const int PED_PIN  = 27;   // botao de pedestre -> GND (INPUT_PULLUP), interrupcao
+const int LDR_PIN  = 4;    // mesmo pino do smart_monitoring (sua montagem real)
+const int PED_PIN  = 5;    // botao de pedestre -> GND (INPUT_PULLUP), interrupcao
 // Semaforo veicular = LED RGB built-in (neopixelWrite)
 
 // -----------------------------------------
@@ -85,7 +85,7 @@ void trocarFase(Fase nova){
 void lerLDR(){
   if(millis() - ultimaLeitura >= 1000){
     ultimaLeitura = millis();
-    ultimoADC = analogRead(LDR_PIN);
+    ultimoADC = 4095 - analogRead(LDR_PIN);   // inverte: escuro = valor baixo
     Serial.print("LDR ADC = ");
     Serial.println(ultimoADC);
   }
@@ -115,6 +115,7 @@ void loop(){
   lerLDR();
 
   // ---------- MODO NOTURNO: baixa luminosidade -> pisca amarelo 1 Hz ----------
+  // Montagem real: MAIS luz -> MAIOR tensao -> ADC ALTO. Logo ADC baixo = escuro.
   if(ultimoADC < LIMIAR_ESCURO){
     if(millis() - ultimoBlink >= 500){   // meio periodo de 1 Hz (ON/OFF a cada 0,5 s)
       ultimoBlink = millis();

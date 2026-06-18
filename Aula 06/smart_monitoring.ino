@@ -28,11 +28,11 @@ WiFiServer server(80);
 // -----------------------------------------
 // LDR no ADC1 (GPIO 32-39). ADC1 NAO conflita com o WiFi
 // (o ADC2 fica indisponivel enquanto o radio esta ligado).
-const int LDR_PIN = 34;          // ADC1_CH6, pino somente-entrada
+const int LDR_PIN = 4;          // ADC1_CH6, pino somente-entrada
 
 // Botao de SOS: ligado entre o pino e o GND, usando pull-up interno.
 // Em repouso le HIGH; ao pressionar vai para LOW => borda de descida (FALLING).
-const int SOS_PIN = 27;          // pino com suporte a interrupcao
+const int SOS_PIN = 5;          // pino com suporte a interrupcao
 
 // LED RGB built-in da placa (NeoPixel). Mesmo recurso usado na Aula 02.
 // Usamos neopixelWrite(LED_BUILTIN, R, G, B).
@@ -148,7 +148,7 @@ String pegarParametro(const String &req, const String &nome){
 void lerLDR(){
   if(millis() - ultimaLeitura >= 1000){
     ultimaLeitura = millis();
-    ultimoADC = analogRead(LDR_PIN);          // 0 a 4095 (12 bits)
+    ultimoADC = 4095 - analogRead(LDR_PIN);          // 0 a 4095 (12 bits)
     Serial.print("LDR ADC = ");
     Serial.println(ultimoADC);
   }
