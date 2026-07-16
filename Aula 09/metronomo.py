@@ -24,10 +24,10 @@
 import argparse
 import time
 
-SERVO_PIN = 12
-BUZZER_PIN = 13
-BTN_MAIS = 5
-BTN_MENOS = 6
+SERVO_PIN = 18
+BUZZER_PIN = 4
+BTN_MAIS = 26
+BTN_MENOS = 16
 
 PULSO_MIN_US = 1000     # 0 graus   - ver nota de calibracao em servo_pwm.py
 PULSO_MAX_US = 2000     # 180 graus

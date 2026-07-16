@@ -22,7 +22,7 @@ import time
 
 import pigpio
 
-BUZZER_PIN = 13
+BUZZER_PIN = 4
 DUTY_50 = 500_000        # 50% em milionesimos (unidade do pigpio)
 
 ESCALA = [("La4", 440), ("Do5", 523), ("Mi5", 659), ("La5", 880)]

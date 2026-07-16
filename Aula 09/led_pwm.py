@@ -14,7 +14,7 @@ import time
 
 import pigpio
 
-LED_PIN = 18                 # GPIO12/18 = PWM0 ; GPIO13/19 = PWM1
+LED_PIN = 17                 # GPIO12/18 = PWM0 ; GPIO13/19 = PWM1
 
 # Duty no pigpio e dado em milionesimos (0 a 1_000_000).
 DUTY_MAX = 1_000_000

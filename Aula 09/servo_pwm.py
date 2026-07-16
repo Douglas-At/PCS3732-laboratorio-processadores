@@ -23,7 +23,7 @@ import time
 
 import pigpio
 
-SERVO_PIN = 12
+SERVO_PIN = 18
 
 # ponytail: 1000/2000 us e o valor nominal da folha de dados; o servo real da bancada
 # costuma precisar de ~500-2400 us para o curso completo. Se 0/180 nao chegarem ao
