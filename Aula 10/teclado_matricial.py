@@ -38,16 +38,43 @@ def tecla_em(r, c):
     return KEYS[r][c]
 
 
+SETTLE_S = 0.001    # deixa a linha assentar antes de ler (jumper longo tem capacitancia)
+
+
 def ler_tecla(GPIO):
     """Varre a matriz uma vez. Retorna o char premido ou None."""
     for r, rp in enumerate(ROWS):
         GPIO.output(rp, GPIO.LOW)
+        time.sleep(SETTLE_S)
         for c, cp in enumerate(COLS):
             if GPIO.input(cp) == GPIO.LOW:
                 GPIO.output(rp, GPIO.HIGH)
                 return tecla_em(r, c)
         GPIO.output(rp, GPIO.HIGH)
     return None
+
+
+def diag(GPIO):
+    """Diagnostico: dirige cada linha em LOW e mostra o nivel cru das colunas.
+
+    Pressione uma tecla e observe: 'v' = coluna leu 0 (contato fechado).
+    - Uma LINHA morta: nenhuma tecla dela acende 'v'.
+    - Uma COLUNA morta: aquela coluna nunca vira 'v' em nenhuma linha.
+    """
+    print(" (Ctrl+C p/ sair) pressione teclas e veja qual (linha,coluna) responde")
+    print("            " + "  ".join(f"C{cp:<2d}" for cp in COLS))
+    try:
+        while True:
+            for r, rp in enumerate(ROWS):
+                GPIO.output(rp, GPIO.LOW)
+                time.sleep(SETTLE_S)
+                marcas = ["v " if GPIO.input(cp) == GPIO.LOW else ". " for cp in COLS]
+                GPIO.output(rp, GPIO.HIGH)
+                if "v " in marcas:
+                    print(f" linha R{rp:<2d}: " + "  ".join(marcas))
+            time.sleep(0.08)
+    except KeyboardInterrupt:
+        print("\nInterrompido.")
 
 
 def demo():
@@ -67,6 +94,7 @@ def demo():
 def main():
     ap = argparse.ArgumentParser(description="Teste do teclado matricial 4x4")
     ap.add_argument("--test", action="store_true", help="auto-teste sem hardware")
+    ap.add_argument("--diag", action="store_true", help="diagnostico de fiacao (linha x coluna)")
     args = ap.parse_args()
 
     if args.test:
@@ -81,6 +109,14 @@ def main():
         GPIO.setup(rp, GPIO.OUT, initial=GPIO.HIGH)
     for cp in COLS:
         GPIO.setup(cp, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+    if args.diag:
+        print("\n== Diagnostico do teclado 4x4 ==")
+        try:
+            diag(GPIO)
+        finally:
+            GPIO.cleanup()
+        return
 
     print("\n== Teclado 4x4 (Ctrl+C para sair) ==")
     print(" pressione teclas...")
