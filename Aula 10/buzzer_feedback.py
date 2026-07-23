@@ -77,6 +77,8 @@ def demo():
 def main():
     ap = argparse.ArgumentParser(description="Feedback sonoro da fechadura (RPi.GPIO)")
     ap.add_argument("--som", choices=list(SONS), default="ok", help="padrao a tocar")
+    ap.add_argument("--freq", type=int, help="toca um tom continuo (Hz) por --ms - so p/ teste")
+    ap.add_argument("--ms", type=int, default=1000, help="duracao do tom continuo (padrao 1000)")
     ap.add_argument("--test", action="store_true", help="auto-teste sem hardware")
     args = ap.parse_args()
 
@@ -86,8 +88,15 @@ def main():
 
     bz = Buzzer()
     try:
-        print(f"Tocando padrao: {args.som}")
-        bz.tocar(args.som)
+        if args.freq:                       # tom longo e obvio p/ conferir a fiacao
+            print(f"Tom de teste: {args.freq} Hz por {args.ms} ms")
+            bz.pwm.ChangeFrequency(args.freq)
+            bz.pwm.ChangeDutyCycle(DUTY_50)
+            time.sleep(args.ms / 1000.0)
+            bz.pwm.ChangeDutyCycle(0)
+        else:
+            print(f"Tocando padrao: {args.som}")
+            bz.tocar(args.som)
     finally:
         bz.fechar()
 
