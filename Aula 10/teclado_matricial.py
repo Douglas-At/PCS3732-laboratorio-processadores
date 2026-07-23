@@ -54,25 +54,38 @@ def ler_tecla(GPIO):
     return None
 
 
-def diag(GPIO):
-    """Diagnostico: dirige cada linha em LOW e mostra o nivel cru das colunas.
+def _cruzamento(GPIO):
+    """Varre a matriz e devolve (rp, cp, r, c) do 1o cruzamento ativo, ou None."""
+    for r, rp in enumerate(ROWS):
+        GPIO.output(rp, GPIO.LOW)
+        time.sleep(SETTLE_S)
+        for c, cp in enumerate(COLS):
+            if GPIO.input(cp) == GPIO.LOW:
+                GPIO.output(rp, GPIO.HIGH)
+                return rp, cp, r, c
+        GPIO.output(rp, GPIO.HIGH)
+    return None
 
-    Pressione uma tecla e observe: 'v' = coluna leu 0 (contato fechado).
-    - Uma LINHA morta: nenhuma tecla dela acende 'v'.
-    - Uma COLUNA morta: aquela coluna nunca vira 'v' em nenhuma linha.
+
+def diag(GPIO):
+    """Diagnostico: imprime UMA linha por tecla premida, com o cruzamento real.
+
+    Aperte UMA tecla de cada vez. Cada linha mostra:
+      linha=GPIOxx  coluna=GPIOyy  -> codigo atual diz 'Z'
+    Se o 'Z' nao bater com a tecla que voce apertou, a fiacao esta
+    trocada/deslocada -> me mande estas linhas p/ eu ajustar o mapa.
     """
-    print(" (Ctrl+C p/ sair) pressione teclas e veja qual (linha,coluna) responde")
-    print("            " + "  ".join(f"C{cp:<2d}" for cp in COLS))
+    print(" (Ctrl+C p/ sair) aperte UMA tecla de cada vez:\n")
+    anterior = None
     try:
         while True:
-            for r, rp in enumerate(ROWS):
-                GPIO.output(rp, GPIO.LOW)
-                time.sleep(SETTLE_S)
-                marcas = ["v " if GPIO.input(cp) == GPIO.LOW else ". " for cp in COLS]
-                GPIO.output(rp, GPIO.HIGH)
-                if "v " in marcas:
-                    print(f" linha R{rp:<2d}: " + "  ".join(marcas))
-            time.sleep(0.08)
+            achou = _cruzamento(GPIO)
+            if achou and achou != anterior:
+                rp, cp, r, c = achou
+                print(f"  linha=GPIO{rp:<2d}  coluna=GPIO{cp:<2d}  -> codigo diz '{tecla_em(r, c)}'")
+                time.sleep(DEBOUNCE_S)
+            anterior = achou
+            time.sleep(0.03)
     except KeyboardInterrupt:
         print("\nInterrompido.")
 
