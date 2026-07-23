@@ -107,6 +107,7 @@ class Fechadura:
         self.buffer = ""
         if certa:
             self.tentativas = 0
+            self.alarme = False         # senha correta reseta o alarme
             self.hw.buzzer.bip_ok()
             self._mostrar("ACESSO", "LIBERADO")
             self.hw.servo.destrancar()
@@ -184,9 +185,14 @@ def main():
     print(" PIN de fabrica: 1234 | # confirma | * limpa")
     try:
         anterior = None
+        auto_ant = "IDLE"
         while True:
             agora = time.time()
-            fech.tick(agora)
+            st = fech.tick(agora)               # tranca sozinha / vigia a trava
+            if st != auto_ant:                  # mostra o que o tick fez
+                if st in ("TRANCADA", "ALARME"):
+                    print(f" (auto) -> {st}")
+                auto_ant = st
             tecla = hw.ler_tecla()
             if tecla and tecla != anterior:
                 estado = fech.tecla(tecla, agora)
@@ -299,8 +305,18 @@ def demo():
     hw.sensor._t = False            # alguem forca o ferrolho
     assert f.tick(t + 2 * VIGIA_S) == "ALARME", "vigilancia pega a abertura"
     assert f.alarme is True
+    # durante o alarme o tick fica preso em ALARME (nao volta sozinho)
+    assert f.tick(t + 3 * VIGIA_S) == "ALARME"
 
-    print("demo OK: hash, tentativas, bloqueio, limpar, A-D, trancar e vigilancia continua.")
+    # 9) senha correta durante o alarme RESETA e volta ao ciclo normal
+    hw.sensor._t = True             # ferrolho recolocado
+    for ch in "1234":
+        f.tecla(ch, t)
+    assert f.tecla("#", t) == "DESTRANCADA", "senha certa sai do alarme"
+    assert f.alarme is False
+    assert f.tick(t + ABERTA_S + 1) == "TRANCADA", "re-tranca normal apos reset"
+
+    print("demo OK: hash, tentativas, bloqueio, limpar, A-D, trancar, vigilancia e reset do alarme.")
 
 
 if __name__ == "__main__":
