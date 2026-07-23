@@ -4,9 +4,9 @@
 # Raspberry Pi 3 + RPi.GPIO + I2C
 #
 # Costura os 5 componentes isolados:
-#   teclado_matricial (entrada da senha)
+#   teclado_matricial (entrada da senha, 4x4)
 #   lcd_i2c           (mostra o estado)
-#   buzzer_feedback   (feedback sonoro)
+#   buzzer_feedback   (feedback sonoro; erro = sirene de ambulancia)
 #   servo_fechadura   (atua o ferrolho)
 #   sensor_trava      (confere a posicao do ferrolho)
 #
@@ -14,22 +14,47 @@
 #   BLOQUEADA -> DIGITANDO -> VALIDANDO -> DESTRANCADA
 #                                       -> ERRO -> (3x) BLOQUEIO_TEMPORIZADO
 #
-# A logica (senha, tentativas, bloqueio, coerencia do
-# sensor) e injetada com hardware (real ou fake), entao
-# roda o auto-teste sem GPIO/I2C:  python3 fechadura.py --test
+# SEGURANCA: a senha NAO fica em texto no codigo. Guardamos apenas
+# o salt e o hash PBKDF2-HMAC-SHA256 (stdlib hashlib), e a verificacao
+# usa hmac.compare_digest (comparacao em tempo constante). Ver a secao
+# de analise de seguranca no PLANEJAMENTO_PRE_AULA.md.
+#
+# A logica (senha, tentativas, bloqueio, coerencia do sensor) roda com
+# hardware real OU fake, entao da p/ auto-testar no PC sem GPIO/I2C:
+#   python3 fechadura.py --test
 #
 # Uso:  sudo python3 fechadura.py
 #       python3 fechadura.py --test    (roda no PC)
 # =========================================
 
 import argparse
+import hashlib
+import hmac
 import time
 
-SENHA = "1234"          # ponytail: texto no codigo e ok p/ prototipo de aula;
-                        # o .md (analise de seguranca) discute o risco e mitigacoes.
+# Credencial armazenada (nunca o PIN em claro). PIN de fabrica: 1234.
+# Para trocar: gere um novo hash com
+#   python3 -c "import hashlib;print(hashlib.pbkdf2_hmac('sha256',b'NOVOPIN',b'fechadura-aula10-salt',100000).hex())"
+SENHA_SALT = b"fechadura-aula10-salt"
+SENHA_HASH = "a520aa2c53b77433c8f31239ccbd56cde6b87454f291e4bcfc75665eeac93128"
+PBKDF2_ITER = 100_000
+
 MAX_TENTATIVAS = 3
 BLOQUEIO_S = 30
 ABERTA_S = 5            # tranca sozinha depois deste tempo destrancada
+
+
+def hash_senha(pin, salt=SENHA_SALT):
+    """Deriva o hash PBKDF2-HMAC-SHA256 do PIN (str). Logica pura, testavel."""
+    return hashlib.pbkdf2_hmac("sha256", pin.encode(), salt, PBKDF2_ITER).hex()
+
+
+def senha_confere(pin):
+    """True se o PIN digitado corresponde ao hash armazenado.
+
+    compare_digest evita vazar por tempo qual prefixo estava certo.
+    """
+    return hmac.compare_digest(hash_senha(pin), SENHA_HASH)
 
 
 class Fechadura:
@@ -67,14 +92,16 @@ class Fechadura:
         if ch == "#":                       # confirmar
             return self._validar(agora)
 
-        # digito comum
+        # digito comum (ignora A-D, que ficam livres p/ uso futuro)
+        if not ch.isdigit():
+            return "DIGITANDO"
         self.buffer += ch
         self.hw.buzzer.bip_tecla()
         self._mostrar("Senha:", "*" * len(self.buffer))
         return "DIGITANDO"
 
     def _validar(self, agora):
-        certa = self.buffer == SENHA
+        certa = senha_confere(self.buffer)
         self.buffer = ""
         if certa:
             self.tentativas = 0
@@ -147,7 +174,7 @@ def main():
     hw = _hw_real()
     fech = Fechadura(hw)
     print("\n== Fechadura eletronica (Ctrl+C para sair) ==")
-    print(f" senha atual: {SENHA} | # confirma | * limpa")
+    print(" PIN de fabrica: 1234 | # confirma | * limpa")
     try:
         anterior = None
         while True:
@@ -184,6 +211,12 @@ class _FakeSensor:
 
 def demo():
     """Auto-teste sem hardware: python3 fechadura.py --test"""
+    # 0) credencial: hash confere o PIN certo e rejeita os errados,
+    #    e o hash armazenado NAO e o PIN em claro.
+    assert senha_confere("1234")
+    assert not senha_confere("0000") and not senha_confere("12345")
+    assert SENHA_HASH != "1234" and len(SENHA_HASH) == 64
+
     def nova(sensor_ok=True):
         class HW:
             pass
@@ -227,7 +260,16 @@ def demo():
         f.tecla(ch, 0)
     assert f.tecla("#", 0) == "DESTRANCADA", "apos limpar, senha correta abre"
 
-    # 5) sensor incoerente ao trancar -> alarme
+    # 5) teclas A-D sao ignoradas no meio do PIN
+    f, hw = nova()
+    for ch in "1":
+        f.tecla(ch, 0)
+    f.tecla("A", 0)                 # nao entra no buffer
+    for ch in "234":
+        f.tecla(ch, 0)
+    assert f.tecla("#", 0) == "DESTRANCADA", "A-D nao contaminam o PIN"
+
+    # 6) sensor incoerente ao trancar -> alarme
     f, hw = nova(sensor_ok=False)
     for ch in "1234":
         f.tecla(ch, 0)
@@ -235,7 +277,7 @@ def demo():
     assert f.tick(ABERTA_S + 1) == "ALARME"
     assert f.alarme is True
 
-    # 6) sensor coerente ao trancar -> TRANCADA, sem alarme
+    # 7) sensor coerente ao trancar -> TRANCADA, sem alarme
     f, hw = nova(sensor_ok=True)
     for ch in "1234":
         f.tecla(ch, 0)
@@ -243,7 +285,7 @@ def demo():
     assert f.tick(ABERTA_S + 1) == "TRANCADA"
     assert f.alarme is False
 
-    print("demo OK: senha, tentativas, bloqueio, limpar e coerencia do sensor.")
+    print("demo OK: hash da senha, tentativas, bloqueio, limpar, A-D e coerencia do sensor.")
 
 
 if __name__ == "__main__":

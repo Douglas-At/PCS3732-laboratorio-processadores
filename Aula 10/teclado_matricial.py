@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 # =========================================
-# COMPONENTE - TECLADO MATRICIAL 4x3
+# COMPONENTE - TECLADO MATRICIAL 4x4
 # Raspberry Pi 3 + RPi.GPIO
 #
-# 4 linhas (saidas) x 3 colunas (entradas c/ pull-up).
+# 4 linhas (saidas) x 4 colunas (entradas c/ pull-up).
 # Varredura: aciona uma linha em nivel BAIXO por vez e le
 # as colunas; a coluna que ficar em 0 marca a tecla premida.
 #
-# Ligacao (BCM):
-#   Linhas (OUT) : GPIO 5, 6, 13, 19
-#   Colunas (IN) : GPIO 12, 16, 20   (pull-up interno)
+# Ligacao (BCM) - ordem dos 8 pinos do conector do teclado:
+#   16, 20, 21, 26, 19, 13, 6, 5
+#   Linhas (OUT) : GPIO 16, 20, 21, 26   (pinos 1..4 do modulo)
+#   Colunas (IN) : GPIO 19, 13, 6, 5     (pinos 5..8, pull-up interno)
 #
 # Uso:  sudo python3 teclado_matricial.py
 #       python3 teclado_matricial.py --test   (roda no PC)
@@ -18,16 +19,15 @@
 import argparse
 import time
 
-ROWS = [5, 6, 13, 19]
-COLS = [12, 16, 20]
+# Ordem do conector do teclado: 16,20,21,26,19,13,6,5
+ROWS = [16, 20, 21, 26]
+COLS = [19, 13, 6, 5]
 
-# ponytail: 4x3 conforme pedido. Para 4x4 basta acrescentar a coluna
-# extra em COLS e a coluna de teclas ('A','B','C','D') em KEYS.
 KEYS = [
-    ["1", "2", "3"],
-    ["4", "5", "6"],
-    ["7", "8", "9"],
-    ["*", "0", "#"],
+    ["1", "2", "3", "A"],
+    ["4", "5", "6", "B"],
+    ["7", "8", "9", "C"],
+    ["*", "0", "#", "D"],
 ]
 
 DEBOUNCE_S = 0.03
@@ -56,14 +56,16 @@ def demo():
     assert all(len(linha) == len(COLS) for linha in KEYS), "uma tecla por coluna"
     assert tecla_em(0, 0) == "1" and tecla_em(3, 2) == "#"
     assert tecla_em(3, 0) == "*" and tecla_em(3, 1) == "0"
+    assert tecla_em(0, 3) == "A" and tecla_em(3, 3) == "D"
     # Todas as teclas sao unicas (nenhuma posicao repetida).
     todas = [k for linha in KEYS for k in linha]
     assert len(set(todas)) == len(todas), "teclas duplicadas na matriz"
-    print("demo OK: mapa 4x3 consistente (0-9, *, #).")
+    assert len(todas) == 16, "teclado 4x4 tem 16 teclas"
+    print("demo OK: mapa 4x4 consistente (0-9, *, #, A-D).")
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Teste do teclado matricial 4x3")
+    ap = argparse.ArgumentParser(description="Teste do teclado matricial 4x4")
     ap.add_argument("--test", action="store_true", help="auto-teste sem hardware")
     args = ap.parse_args()
 
@@ -80,7 +82,7 @@ def main():
     for cp in COLS:
         GPIO.setup(cp, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-    print("\n== Teclado 4x3 (Ctrl+C para sair) ==")
+    print("\n== Teclado 4x4 (Ctrl+C para sair) ==")
     print(" pressione teclas...")
     try:
         anterior = None
