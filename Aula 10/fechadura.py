@@ -125,9 +125,8 @@ class Fechadura:
         """Chamado periodicamente: tranca sozinha e confere o sensor."""
         if self.aberta_ate and agora >= self.aberta_ate:
             self.aberta_ate = 0.0
-            self.hw.servo.trancar()
-            time.sleep(0.2)
-            if not self.hw.sensor.trancada():
+            self.hw.servo.trancar()     # ja bloqueia ~0,5s movendo o ferrolho
+            if not self.hw.sensor.trancada():   # confere na hora, sem espera extra
                 # Comandou trancar mas o sensor diz aberto -> alarme.
                 self.alarme = True
                 self.hw.buzzer.bip_erro()

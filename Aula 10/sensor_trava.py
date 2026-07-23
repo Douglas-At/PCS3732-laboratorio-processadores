@@ -33,7 +33,7 @@ SOM_CM_S = 34300        # velocidade do som (~343 m/s) em cm/s
 # ponytail: calibrar na bancada conforme a mecanica do ferrolho/batente.
 LIMIAR_TRANCADO_CM = 10.0
 
-TIMEOUT_S = 0.03        # sem eco ate aqui -> leitura invalida (None)
+TIMEOUT_S = 0.02        # sem eco ate aqui -> leitura invalida (None); ~3,4 m de alcance
 
 
 def distancia_cm(dt_echo_s):
