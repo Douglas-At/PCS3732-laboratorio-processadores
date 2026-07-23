@@ -146,8 +146,7 @@ def _hw_real():
     from buzzer_feedback import Buzzer
     from servo_fechadura import Servo
     from sensor_trava import Sensor
-    from teclado_matricial import ROWS, COLS, ler_tecla
-    import RPi.GPIO as GPIO
+    from teclado_matricial import novo_teclado, ler_tecla
 
     class HW:
         pass
@@ -157,16 +156,10 @@ def _hw_real():
     hw.servo = Servo()
     hw.sensor = Sensor()
 
-    # o teclado compartilha o mesmo GPIO ja em BCM
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(False)
-    for rp in ROWS:
-        GPIO.setup(rp, GPIO.OUT, initial=GPIO.HIGH)
-    for cp in COLS:
-        GPIO.setup(cp, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    hw.GPIO = GPIO
-    hw.ler_tecla = lambda: ler_tecla(GPIO)
-    hw.fechar = lambda: (hw.buzzer.fechar(), hw.servo.fechar(), GPIO.cleanup())
+    # teclado pelo modulo Keypad.py da Freenove (gpiozero)
+    kp = novo_teclado()
+    hw.ler_tecla = lambda: ler_tecla(kp)
+    hw.fechar = lambda: (hw.buzzer.fechar(), hw.servo.fechar())
     return hw
 
 
