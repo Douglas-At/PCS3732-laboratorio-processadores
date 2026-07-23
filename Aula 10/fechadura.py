@@ -42,6 +42,7 @@ PBKDF2_ITER = 100_000
 MAX_TENTATIVAS = 3
 BLOQUEIO_S = 30
 ABERTA_S = 5            # tranca sozinha depois deste tempo destrancada
+VIGIA_S = 1             # confere a trava a cada 1s enquanto deveria estar trancada
 
 
 def hash_senha(pin, salt=SENHA_SALT):
@@ -67,6 +68,7 @@ class Fechadura:
         self.tentativas = 0
         self.bloqueado_ate = 0.0
         self.aberta_ate = 0.0
+        self.prox_vigia = 0.0       # proximo instante de checagem periodica da trava
         self.alarme = False
         self._mostrar("FECHADURA", "Digite a senha")
 
@@ -121,19 +123,32 @@ class Fechadura:
         self._mostrar("SENHA", "INCORRETA")
         return "ERRO"
 
+    def _disparar_alarme(self):
+        self.alarme = True
+        self.hw.buzzer.bip_erro()
+        self._mostrar("ALARME", "ferrolho aberto")
+        return "ALARME"
+
     def tick(self, agora):
-        """Chamado periodicamente: tranca sozinha e confere o sensor."""
+        """Chamado periodicamente: tranca sozinha e vigia a trava a cada VIGIA_S."""
+        if self.alarme:
+            return "ALARME"
+
+        # fim da janela destrancada -> tranca e confere na hora
         if self.aberta_ate and agora >= self.aberta_ate:
             self.aberta_ate = 0.0
             self.hw.servo.trancar()     # ja bloqueia ~0,5s movendo o ferrolho
-            if not self.hw.sensor.trancada():   # confere na hora, sem espera extra
-                # Comandou trancar mas o sensor diz aberto -> alarme.
-                self.alarme = True
-                self.hw.buzzer.bip_erro()
-                self._mostrar("ALARME", "ferrolho aberto")
-                return "ALARME"
+            self.prox_vigia = agora + VIGIA_S
+            if not self.hw.sensor.trancada():
+                return self._disparar_alarme()
             self._mostrar("FECHADURA", "Digite a senha")
             return "TRANCADA"
+
+        # vigilancia periodica: enquanto deveria estar trancada, checa a cada VIGIA_S
+        if not self.aberta_ate and agora >= self.prox_vigia:
+            self.prox_vigia = agora + VIGIA_S
+            if not self.hw.sensor.trancada():
+                return self._disparar_alarme()
         return "IDLE"
 
 
@@ -277,7 +292,15 @@ def demo():
     assert f.tick(ABERTA_S + 1) == "TRANCADA"
     assert f.alarme is False
 
-    print("demo OK: hash da senha, tentativas, bloqueio, limpar, A-D e coerencia do sensor.")
+    # 8) vigilancia periodica: apos trancada, se o ferrolho e forcado aberto,
+    #    a proxima checagem (a cada VIGIA_S) dispara o alarme.
+    t = ABERTA_S + 1
+    assert f.tick(t + VIGIA_S) == "IDLE", "trancada e coerente -> segue normal"
+    hw.sensor._t = False            # alguem forca o ferrolho
+    assert f.tick(t + 2 * VIGIA_S) == "ALARME", "vigilancia pega a abertura"
+    assert f.alarme is True
+
+    print("demo OK: hash, tentativas, bloqueio, limpar, A-D, trancar e vigilancia continua.")
 
 
 if __name__ == "__main__":
