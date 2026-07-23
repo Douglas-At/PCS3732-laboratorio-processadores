@@ -113,15 +113,14 @@ def main():
     print("\n== Sensor de trava HC-SR04 (Ctrl+C para sair) ==")
     print(f" aproxime/afaste o batente (limiar {LIMIAR_TRANCADO_CM:.0f} cm)...")
     try:
-        anterior = None
         while True:
             d = sensor.medir()
             estado = esta_trancada(d)
-            if estado != anterior:
-                dtxt = "sem eco" if d is None else f"{d:.1f} cm"
-                print(f" {'TRANCADA' if estado else 'ABERTA'}  ({dtxt})")
-            anterior = estado
-            time.sleep(0.1)
+            dtxt = "  sem eco" if d is None else f"{d:7.1f} cm"
+            # \r reescreve a mesma linha -> leitura ao vivo, quase continua.
+            print(f"\r {dtxt}   {'TRANCADA' if estado else 'ABERTA  '}   ",
+                  end="", flush=True)
+            time.sleep(0.05)
     except KeyboardInterrupt:
         print("\nInterrompido.")
     finally:
